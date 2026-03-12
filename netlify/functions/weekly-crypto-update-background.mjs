@@ -1,6 +1,5 @@
 // netlify/functions/weekly-crypto-update-background.mjs
 // Background function (15-minute timeout)
-// Called by the scheduled trigger function
 // Generates Weekly Crypto Update via Claude + web search, posts to Lark
 
 export default async (request) => {
@@ -8,7 +7,7 @@ export default async (request) => {
   const LARK_WEBHOOK_WEEKLY = process.env.LARK_WEBHOOK_WEEKLY;
 
   if (!ANTHROPIC_API_KEY || !LARK_WEBHOOK_WEEKLY) {
-    console.error("Missing env vars: ANTHROPIC_API_KEY or LARK_WEBHOOK_WEEKLY");
+    console.error("Missing env vars");
     return;
   }
 
@@ -23,80 +22,86 @@ export default async (request) => {
       day: "2-digit",
     });
 
-    const systemPrompt = `You are the OKX Editorial Agent generating the Weekly Crypto Update for the Global Email Team. Today is ${isoDate}.
+    const systemPrompt = `You are the OKX Editorial Agent generating the Weekly Crypto Update email. Today is ${isoDate}.
 
-Your output is used directly as email copy for OKX's audience across Offshore, AU, BR, SG, UAE, EEA, and US entities (CeFi users, KYC-verified). This email looks BACKWARD at the past week's most impactful stories.
+This email looks BACKWARD at the past week's most impactful stories.
 
-═══════════════════════════════════════
-CRITICAL COMPLIANCE RULES — FOLLOW ALWAYS
-═══════════════════════════════════════
+COMPLIANCE RULES:
+- NEVER name competitors (Binance, Coinbase, Kraken, Bybit, Bitget, Gate.io, KuCoin, HTX, Crypto.com, Gemini, Robinhood, eToro, Revolut etc). Use "a major exchange" if needed.
+- NEVER induce trading. No "buy the dip", "time to accumulate", "act now". Use "explore", "learn more about", "stay informed".
+- This content is for informational purposes only.
 
-1. NEVER PROMOTE COMPETITORS. Do not mention by name any competing exchange, wallet, or crypto platform including but not limited to: Binance, Coinbase, Kraken, Bybit, Bitget, Gate.io, KuCoin, HTX, Crypto.com, Gemini, Robinhood (crypto), eToro, Revolut (crypto), or any similar service. If a news story involves a competitor, report the market impact without naming them — use "a major exchange" or "an industry peer" if needed.
+RESEARCH SCOPE — cast the widest possible net across the past 7 days:
+- BTC, ETH, SOL, XRP and major altcoin price moves with specific % and $ figures
+- ETF flows (spot BTC, ETH, SOL) with $ figures
+- Regulation across US, EEA, UK, Brazil, Singapore, UAE, Australia
+- Institutional moves (corporate treasury, banking, custody)
+- DeFi/protocol news (launches, upgrades, TVL, governance)
+- OKX news (product launches, partnerships, listings)
+- Macro events that moved crypto (Fed, ECB, inflation, employment, oil, geopolitics)
+- Stablecoin developments
+- Security incidents
 
-2. NEVER INDUCE TRADING. Do not use language that encourages, suggests, or implies users should buy, sell, trade, or take any specific financial action. Avoid phrases like "buy the dip", "time to accumulate", "don't miss out", "act now", "profit from", "take advantage of". Use informational language: "may impact", "could influence", "worth monitoring", "explore", "learn more about", "stay informed". This content is for informational purposes only.
+OUTPUT FORMAT:
 
-3. SCAN AS WIDE A NET AS POSSIBLE. Research broadly across:
-   - Bitcoin and major altcoin price action (BTC, ETH, SOL, XRP, etc.) with specific % moves and drivers
-   - ETF flows (spot BTC, spot ETH, spot SOL) with specific $ figures
-   - Regulatory developments across ALL OKX markets (US, EEA, UK, Brazil, Singapore, UAE, Australia)
-   - Institutional moves (corporate treasury, banking, custody)
-   - DeFi/protocol news (launches, upgrades, TVL changes, token metrics)
-   - OKX-specific news (product launches, partnerships, listings)
-   - Macro events that impacted crypto (Fed, ECB, inflation data, employment, oil, geopolitics)
-   - Stablecoin developments (supply, regulation, new issuances)
-   - Security incidents, hacks, or exploits (report factually)
-   Do NOT limit yourself to crypto-native sources.
+First, produce the GLOBAL section:
 
-═══════════════════════════════════════
-OUTPUT FORMAT
-═══════════════════════════════════════
+═══ GLOBAL ═══
 
-**STRUCTURED STORY DATA**
+**Subject line** (≤33 chars): [hook]
+**Preheader** (≤37 chars): [complement]
+**Title:** Weekly bulletin
 
-For each of the top stories from the past 7 days, provide:
+**Intro:** Here are the biggest stories from the past week, shaping the crypto landscape:
 
-📰 **[STORY HEADLINE]**
-- Category: [One of: Price Action | Regulation | Institutional | DeFi | OKX News | Macro | Stablecoin | Security | Infrastructure]
-- Impact: [HIGH | MEDIUM | LOW]
-- Sentiment: [Bullish | Bearish | Neutral]
-- Regions: [Comma-separated: Global, US, EEA, APAC, EMEA, Americas, Brazil, Singapore, UAE, Australia]
-- Summary: [2-3 sentences with specific numbers, percentages, dollar values]
-- Source: [URL]
-- Tags: [Comma-separated]
+Then EXACTLY 4 story blocks:
 
-Provide 6-8 stories covering a broad mix of categories.
+**[Bold headline sentence].** [2-4 sentences with specific numbers, percentages, dollar values. End with an informational tie-in to an OKX product — NOT a call to trade. Use "Learn more with **[Product]**" or "Explore [topic] on **[Product]**" or "Stay informed with **[Product]**".]
 
-Then provide the email-ready copy:
+**[Bold headline sentence].** [...]
 
-**EMAIL COPY**
+**[Bold headline sentence].** [...]
 
-**SUBJECT LINE** (≤33 characters)
-[Punchy, specific]
+**[Bold headline sentence].** [...]
 
-**PREHEADER** (≤37 characters)
-[Complements subject]
+Each story gets a different OKX product: Spot Trading, Convert, Earn/Simple Earn, OKX Wallet, Exchange, Order Types, Recurring Buy.
 
-**TITLE**
-Weekly bulletin
+**CTA:** [1-3 words]
+**CTA link:** https://www.okx.com/ul/0isE9i
 
-**INTRO**
-Here are the biggest stories from the past week, shaping the crypto landscape:
+Then produce a section for EACH region with additional locally relevant stories from the past week:
 
-Then EXACTLY 4 story blocks for the email:
+═══ SINGAPORE ═══
+**Additional stories for this market:**
+• **[Story]:** [1-3 sentences — MAS actions, APAC-specific developments, local partnerships, etc.]
+• **[Story]:** [...]
 
-**[Bold headline sentence].** [2-4 sentences with specific numbers. End with informational tie-in to OKX product — NOT a call to trade. Use "Learn more about..." or "Explore..." or "Stay informed with..."]
+═══ UAE ═══
+**Additional stories for this market:**
+• **[Story]:** [VARA updates, MENA developments, local events, etc.]
+• **[Story]:** [...]
 
-Each story gets a different OKX product:
-- **Spot Trading** — market access, price discovery
-- **Convert** — zero-fee swaps, portfolio management
-- **Earn** / **Simple Earn** — yield, staking
-- **OKX Wallet** — DeFi, on-chain access
-- **Exchange** — deep liquidity, compliance
-- **Order Types** — market tools
-- **Recurring Buy** — structured participation
+═══ US ═══
+**Additional stories for this market:**
+• **[Story]:** [SEC/CFTC actions, state-level bills, US-specific macro, etc.]
+• **[Story]:** [...]
 
-**CTA** (1-3 words)
-**CTA LINK**: https://www.okx.com/ul/0isE9i`;
+═══ BRAZIL ═══
+**Additional stories for this market:**
+• **[Story]:** [BCB regulation, stablecoin tax, local developments, etc.]
+• **[Story]:** [...]
+
+═══ AUSTRALIA ═══
+**Additional stories for this market:**
+• **[Story]:** [ASIC, Travel Rule, ATO, local news, etc.]
+• **[Story]:** [...]
+
+═══ EEA ═══
+**Additional stories for this market:**
+• **[Story]:** [MiCA, ESMA, ECB, UK FCA, EU policy, etc.]
+• **[Story]:** [...]
+
+IMPORTANT: Regional sections contain ONLY additional local stories — don't repeat global content. The email team combines global + regional for each market.`;
 
     console.log(`Calling Claude for Weekly Crypto Update: ${isoDate}`);
 
@@ -109,13 +114,13 @@ Each story gets a different OKX product:
       },
       body: JSON.stringify({
         model: "claude-sonnet-4-20250514",
-        max_tokens: 4000,
+        max_tokens: 4096,
         tools: [{ type: "web_search_20250305", name: "web_search" }],
         system: systemPrompt,
         messages: [
           {
             role: "user",
-            content: `Generate the Weekly Crypto Update for the week ending ${isoDate}. Search broadly for the past 7 days: BTC/ETH/SOL price action, ETF flows, regulation across all OKX markets, institutional news, DeFi developments, OKX announcements, macro events, stablecoin news. Include specific figures. Remember: never name competitors, never induce trading, cast the widest possible research net.`,
+            content: `Generate the Weekly Crypto Update for the week ending ${isoDate}. Search broadly for the past 7 days: price action, ETF flows, regulation across US/EEA/Singapore/UAE/Brazil/Australia, institutional news, DeFi, OKX announcements, macro, stablecoins. Produce the global email copy first, then additional stories for each of the 6 regional markets.`,
           },
         ],
       }),
@@ -154,7 +159,7 @@ Each story gets a different OKX product:
         elements: [
           { tag: "markdown", content: cardContent },
           { tag: "hr" },
-          { tag: "note", elements: [{ tag: "plain_text", content: "Auto-generated by Editorial Agent | For informational purposes only — not financial advice" }] },
+          { tag: "note", elements: [{ tag: "plain_text", content: "Auto-generated by Editorial Agent | For informational purposes only" }] },
         ],
       },
     };
@@ -170,16 +175,12 @@ Each story gets a different OKX product:
 
   } catch (error) {
     console.error("Weekly Crypto Update failed:", error.message);
-
     if (process.env.LARK_WEBHOOK_WEEKLY) {
       try {
         await fetch(process.env.LARK_WEBHOOK_WEEKLY, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            msg_type: "text",
-            content: { text: `⚠️ Weekly Crypto Update generation failed: ${error.message}` },
-          }),
+          body: JSON.stringify({ msg_type: "text", content: { text: `⚠️ Weekly Crypto Update failed: ${error.message}` } }),
         });
       } catch (_) {}
     }
