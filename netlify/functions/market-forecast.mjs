@@ -1,6 +1,7 @@
 // netlify/functions/market-forecast.mjs
 // Schedule: Monday 03:00 UTC
-// Generates weekly Market Forecast content and posts to Lark group "Global Email Market Forecast"
+// Generates the weekly Market Forecast content via Claude + web search
+// Posts structured card to Lark group "Global Email Market Forecast"
 
 export default async (request) => {
   const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
@@ -12,22 +13,102 @@ export default async (request) => {
   }
 
   try {
-    // -------------------------------------------------------
-    // Calculate the date range for this week (Mon-Sun)
-    // -------------------------------------------------------
-    const today = new Date();
-    const monday = new Date(today);
-    monday.setDate(today.getDate() - today.getDay() + 1);
+    const now = new Date();
+    const monday = new Date(now);
+    monday.setDate(now.getDate() - now.getDay() + 1);
     const sunday = new Date(monday);
     sunday.setDate(monday.getDate() + 6);
 
-    const fmt = (d) => d.toLocaleDateString("en-GB", { month: "short", day: "numeric" });
-    const dateRange = `${fmt(monday)}-${fmt(sunday)}`;
-    const isoDate = today.toISOString().split("T")[0];
+    const formatShort = (d) =>
+      d.toLocaleDateString("en-GB", { month: "short", day: "numeric" });
 
-    // -------------------------------------------------------
-    // STEP 1: Call Claude API with Market Forecast prompt
-    // -------------------------------------------------------
+    const weekRange = `${formatShort(monday)}-${formatShort(sunday)}`;
+    const isoDate = now.toISOString().split("T")[0];
+
+    // ----------------------------------------------------------
+    // STEP 1: Generate Market Forecast content via Claude
+    // ----------------------------------------------------------
+    const systemPrompt = `You are the OKX Editorial Agent generating the weekly Market Forecast for the Global Email Team. Today is Monday ${isoDate}.
+
+Your output feeds directly into the OKX Editorial Agent dashboard — a two-week crypto event forecast used by the email marketing team across Offshore, AU, BR, SG, UAE, EEA, and US entities.
+
+═══════════════════════════════════════
+CRITICAL COMPLIANCE RULES — FOLLOW ALWAYS
+═══════════════════════════════════════
+
+1. NEVER PROMOTE COMPETITORS. Do not mention by name any competing exchange, wallet, or crypto platform including but not limited to: Binance, Coinbase, Kraken, Bybit, Bitget, Gate.io, KuCoin, HTX, Crypto.com, Gemini, Robinhood (crypto), eToro, Revolut (crypto), or any similar service. If a news story involves a competitor, report the market impact without naming them — use "a major exchange" or "an industry peer" if needed.
+
+2. NEVER INDUCE TRADING. Do not use language that encourages, suggests, or implies users should buy, sell, trade, or take any specific financial action. Avoid phrases like "buy the dip", "time to accumulate", "don't miss out", "act now", "profit from", "take advantage of". Use informational language: "may impact", "could influence", "worth monitoring", "traders are watching". This content is for informational purposes only.
+
+3. SCAN AS WIDE A NET AS POSSIBLE. Research broadly across:
+   - Macro: CPI, PPI, GDP, FOMC, jobless claims, central bank decisions globally (Fed, ECB, BoE, BoJ, RBA, MAS)
+   - Regulation: SEC, CFTC, MiCA, FCA, MAS, VARA, ASIC, BCB actions and deadlines
+   - Token unlocks: Large scheduled unlocks with $ values and % of supply
+   - Protocol upgrades: Hard forks, emission changes, network upgrades
+   - Conferences: ETH events, policy weeks, industry summits
+   - Cultural moments: Eid, Nowruz, national holidays relevant to OKX markets
+   - OKX product news: Partnerships, launches, features (F1/McLaren, OKX Card, etc.)
+   - Geopolitical: Oil, conflicts, tariffs — anything impacting risk sentiment
+   Do NOT limit yourself to crypto-native sources. Check macro calendars, regulatory trackers, and event databases.
+
+═══════════════════════════════════════
+OUTPUT FORMAT — STRUCTURED EVENT DATA
+═══════════════════════════════════════
+
+Output a structured forecast for each day of the coming week (Monday through Sunday). For each day, list events in this format:
+
+**[DAY], [DATE] [MONTH]**
+
+For each event on that day:
+
+📌 **[EVENT TITLE]**
+- Category: [One of: Macro | Regulation | Token Unlock | Crypto | Conference | Culture | Partnership | Narrative | OKX Product]
+- Impact: [HIGH | MEDIUM | LOW]
+- Sentiment: [Bullish | Bearish | Neutral]
+- Regions: [Comma-separated: Global, US, EEA, APAC, EMEA, Americas, Brazil, Singapore, UAE, Australia, or specific country]
+- Short: [1-2 sentence summary — punchy, specific, with numbers]
+- Detail: [3-5 sentence deeper context — why it matters for crypto markets. Be specific with figures, percentages, dollar values. NEVER induce trading. Use informational language only.]
+- Source: [URL]
+- Tags: [Comma-separated relevant tags]
+
+After all daily events, include:
+
+**🔭 LOOKING AHEAD: [NEXT WEEK DATE RANGE]**
+- [3-5 bullet points previewing major events in the following week]
+
+Then provide email-ready copy:
+
+**EMAIL COPY**
+- Subject line (≤33 chars): [Hook]
+- Preheader (≤37 chars): [Complement]
+- Title (2-6 words): [e.g. "This week's highlights"]
+- Intro (2-4 sentences): [Set macro context with specific data points]
+- Body: [Day-by-day highlights in brief bullet format, matching the style of OKX's Market Forecast emails]
+- Trending Strategy title: [2-5 words]
+- Trending Strategy body: [2-3 informational sentences connecting events to market context — NO trading inducement]
+- Strategy bullet 1: [OKX product/feature + informational connection to this week]
+- Strategy bullet 2: [OKX product/feature + informational connection to this week]
+- CTA (1-3 words): [e.g. "Explore the markets"]
+- CTA link: www.okx.com/trade-spot/
+
+OKX products to reference (rotate naturally): Spot Trading, Convert, Simple Earn, Recurring Buy, Order Types, OKX Wallet, Exchange, OKX Card.
+
+═══════════════════════════════════════
+RESEARCH INSTRUCTIONS
+═══════════════════════════════════════
+
+Search for ALL of the following for this week (${weekRange}):
+1. US and global macro economic calendar events with exact times
+2. Scheduled token unlocks with $ values and % of circulating supply
+3. Regulatory deadlines, consultations, and government actions across ALL OKX markets
+4. Protocol upgrades, emission changes, network milestones
+5. Crypto conferences and industry events
+6. Cultural moments relevant to OKX's global audience
+7. OKX partnership activations (F1, football, etc.)
+8. Geopolitical events impacting risk sentiment
+
+If a day has no significant events, skip it. Do NOT pad with filler content.`;
+
     const claudeResponse = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: {
@@ -44,111 +125,60 @@ export default async (request) => {
             name: "web_search",
           },
         ],
-        system: `You are an expert crypto and macro markets editorial analyst working for OKX, one of the world's largest crypto exchanges. You produce the weekly "Market Forecast" email content for OKX's EMEA email marketing team.
-
-Today is ${isoDate}. You are writing the forecast for the week of ${dateRange}.
-
-Your output must match EXACTLY this structure and tone. Study the examples below carefully — they represent the exact style, depth, and format required.
-
-## OUTPUT FORMAT (follow precisely):
-
-**Subject line** (max 33 characters, must be a hook):
-Examples from past weeks: "CPI Alert: Market-Moving Data", "Macro Matters: Preparing for Friday's NFP Report", "This Week's Crypto Outlook"
-
-**Preheader** (max 37 characters, complements subject):
-Examples: "Plus: Korea's crypto plan, token unlocks and Polkadot halving", "How global volatility and US jobs data could influence digital asset markets"
-
-**Title H1** (2-6 words):
-Usually "This week's highlights" or similar
-
-**Body intro** (2-4 sentences setting the scene for the week):
-Example: "This week includes several planned macro events: CPI on Wednesday. Korea's crypto plan tomorrow. The Fed will decide next week. March's $5.8B unlock wave rolls on."
-
-**Day-by-day breakdown (Monday through Weekend)**:
-For each day, list 1-3 key events with:
-- Bold event name followed by a colon
-- 2-3 sentences of context explaining WHY this matters for crypto markets
-- Include specific data points: dollar amounts, percentages, token quantities
-- Where relevant, mention token unlock amounts with approximate USD values
-
-Focus on these event categories (in priority order):
-1. Macro data releases (CPI, PPI, NFP, GDP, FOMC, PCE, jobless claims)
-2. Regulatory developments (especially Asia, EU, US crypto regulation)
-3. Major token unlocks (include token name, amount, and USD value)
-4. Industry events (conferences, protocol upgrades, halvings)
-5. Central bank activity (Fed reinvestments, rate decisions)
-
-**Trending Strategy section**:
-Title: "Trending Strategy: [Theme Through Volatility/Action/Opportunity]"
-- 2-3 sentences of market context
-- 2 bullet points tying OKX products to the week's events:
-  - Use specific product names: Convert, Spot Trading, Simple Earn, Recurring Buy, OKX Wallet
-  - Frame them as tools for navigating the specific conditions described
-
-**CTA** (1-3 words): e.g. "Track the market on OKX"
-**CTA link**: www.okx.com/trade-spot/
-
-## STYLE RULES:
-- Authoritative but accessible — write for informed retail traders, not academics
-- Every event should explain the "so what" for crypto markets specifically
-- Use phrases like "could shape", "often influences", "historically", "potentially" — avoid definitive predictions
-- Bold the event/topic name at the start of each bullet
-- Include hyperlink-worthy phrases in square brackets like [critical inflation read] or [halving-style event] — the email team will add the actual links
-- Do NOT include legal disclaimers, targeting info, or QA checklists — only the content sections
-- Keep the body concise. Each day's events should be 3-5 sentences max
-- Weekend events are grouped as "Weekend (Sat date – Sun date)"`,
+        system: systemPrompt,
         messages: [
           {
             role: "user",
-            content: `Generate the Market Forecast email content for the week of ${dateRange}. 
-
-Search for:
-1. Key macroeconomic data releases scheduled this week (CPI, PPI, GDP, jobless claims, FOMC, etc.)
-2. Major token unlocks happening this week (check Token Unlocks or similar sources for specific amounts)
-3. Crypto regulatory developments expected this week
-4. Notable crypto industry events, protocol upgrades, or governance votes
-5. Central bank activity (Fed, ECB, BoJ reinvestments or decisions)
-
-Return the content in the exact format specified. Every section must be populated.`,
+            content: `Generate the full Market Forecast for the week of ${weekRange}. Search broadly: macro calendar, token unlocks, regulation across all OKX markets (US, EEA, Brazil, Singapore, UAE, Australia), protocol upgrades, conferences, cultural events, and geopolitics. Include specific dates, times, figures, and dollar values. Remember: never name competitors, never induce trading.`,
           },
         ],
       }),
     });
 
     if (!claudeResponse.ok) {
-      const errorText = await claudeResponse.text();
-      throw new Error(`Claude API error ${claudeResponse.status}: ${errorText}`);
+      const errText = await claudeResponse.text();
+      throw new Error(`Claude API ${claudeResponse.status}: ${errText}`);
     }
 
     const claudeData = await claudeResponse.json();
     const forecastContent = claudeData.content
-      .filter((block) => block.type === "text")
-      .map((block) => block.text)
+      .filter((b) => b.type === "text")
+      .map((b) => b.text)
       .join("\n\n");
 
     if (!forecastContent) {
       throw new Error("Claude returned empty forecast");
     }
 
-    console.log(`Market Forecast generated for ${dateRange}`);
+    console.log(`Market Forecast generated for ${weekRange}`);
 
-    // -------------------------------------------------------
-    // STEP 2: Post to Lark group as interactive card
-    // -------------------------------------------------------
+    // ----------------------------------------------------------
+    // STEP 2: Post to Lark group
+    // ----------------------------------------------------------
+    // Lark cards have a content length limit (~30KB).
+    // If content is very long, truncate and add a note.
+    const MAX_CARD_LENGTH = 28000;
+    let cardContent = forecastContent;
+    let truncated = false;
+    if (cardContent.length > MAX_CARD_LENGTH) {
+      cardContent = cardContent.substring(0, MAX_CARD_LENGTH) + "\n\n⚠️ *Content truncated due to length. Full output available in function logs.*";
+      truncated = true;
+    }
+
     const larkPayload = {
       msg_type: "interactive",
       card: {
         header: {
           title: {
             tag: "plain_text",
-            content: `📊 Market Forecast — ${dateRange}`,
+            content: `📊 Market Forecast — ${weekRange}`,
           },
           template: "green",
         },
         elements: [
           {
             tag: "markdown",
-            content: forecastContent,
+            content: cardContent,
           },
           {
             tag: "hr",
@@ -159,7 +189,7 @@ Return the content in the exact format specified. Every section must be populate
               {
                 tag: "plain_text",
                 content:
-                  "Auto-generated by Editorial Agent | Ready for OKP build — review content, add images, and set targeting",
+                  "Auto-generated by Editorial Agent | For informational purposes only — not financial advice",
               },
             ],
           },
@@ -167,26 +197,41 @@ Return the content in the exact format specified. Every section must be populate
       },
     };
 
-    const larkResponse = await fetch(LARK_WEBHOOK_FORECAST, {
+    const larkRes = await fetch(LARK_WEBHOOK_FORECAST, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(larkPayload),
     });
 
-    if (!larkResponse.ok) {
-      const larkError = await larkResponse.text();
-      throw new Error(`Lark webhook error ${larkResponse.status}: ${larkError}`);
+    if (!larkRes.ok) {
+      const larkErr = await larkRes.text();
+      throw new Error(`Lark webhook ${larkRes.status}: ${larkErr}`);
     }
 
-    const larkResult = await larkResponse.json();
-    console.log("Lark forecast post result:", JSON.stringify(larkResult));
+    console.log("Market Forecast posted to Lark" + (truncated ? " (truncated)" : ""));
 
     return new Response(
-      JSON.stringify({ success: true, week: dateRange }),
+      JSON.stringify({ success: true, week: weekRange, truncated }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("Market Forecast function failed:", error.message);
+    console.error("Market Forecast failed:", error.message);
+
+    if (process.env.LARK_WEBHOOK_FORECAST) {
+      try {
+        await fetch(process.env.LARK_WEBHOOK_FORECAST, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            msg_type: "text",
+            content: {
+              text: `⚠️ Market Forecast generation failed: ${error.message}`,
+            },
+          }),
+        });
+      } catch (_) {}
+    }
+
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 500, headers: { "Content-Type": "application/json" } }
@@ -194,10 +239,7 @@ Return the content in the exact format specified. Every section must be populate
   }
 };
 
-// -------------------------------------------------------
-// Netlify scheduled function config
-// Runs at 03:00 UTC every Monday
-// -------------------------------------------------------
+// Monday 03:00 UTC
 export const config = {
   schedule: "0 3 * * 1",
 };
