@@ -1,7 +1,7 @@
 // netlify/functions/weekly-crypto-update.mjs
 // Schedule: Thursday 12:00 UTC
-// Generates the Weekly Crypto Update email content via Claude + web search
-// Posts formatted card to Lark group "Global Email Weekly Crypto Update"
+// Generates the Weekly Crypto Update content via Claude + web search
+// Posts structured card to Lark group "Global Email Weekly Crypto Update"
 
 export default async (request) => {
   const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
@@ -16,7 +16,6 @@ export default async (request) => {
     const now = new Date();
     const isoDate = now.toISOString().split("T")[0];
 
-    // Calculate the publish date (typically the day after — Friday)
     const publishDate = new Date(now);
     publishDate.setDate(now.getDate() + 1);
     const publishStr = publishDate.toLocaleDateString("en-GB", {
@@ -27,65 +26,107 @@ export default async (request) => {
     // ----------------------------------------------------------
     // STEP 1: Generate Weekly Crypto Update content via Claude
     // ----------------------------------------------------------
-    const systemPrompt = `You are the OKX Editorial Agent generating the Weekly Crypto Update email for the Global Email Team. Today is Thursday ${isoDate}.
+    const systemPrompt = `You are the OKX Editorial Agent generating the Weekly Crypto Update for the Global Email Team. Today is Thursday ${isoDate}.
 
-Your output will be used directly as email copy for OKX's audience across Offshore, AU, BR, SG, UAE, and US entities (CeFi users, KYC-verified). The tone is informed, punchy, and market-aware — editorial quality, not blog filler.
+Your output is used directly as email copy for OKX's audience across Offshore, AU, BR, SG, UAE, EEA, and US entities (CeFi users, KYC-verified). This email looks BACKWARD at the past week's most impactful stories.
 
-This email looks BACKWARD at the past week's most impactful stories, NOT forward. It's a weekly wrap/digest.
+═══════════════════════════════════════
+CRITICAL COMPLIANCE RULES — FOLLOW ALWAYS
+═══════════════════════════════════════
 
-OUTPUT FORMAT — follow this EXACTLY:
+1. NEVER PROMOTE COMPETITORS. Do not mention by name any competing exchange, wallet, or crypto platform including but not limited to: Binance, Coinbase, Kraken, Bybit, Bitget, Gate.io, KuCoin, HTX, Crypto.com, Gemini, Robinhood (crypto), eToro, Revolut (crypto), or any similar service. If a news story involves a competitor, report the market impact without naming them — use "a major exchange" or "an industry peer" if needed.
 
-**SUBJECT LINE** (hook within 33 characters)
-[Punchy, specific. Examples: "Weekly Update: BTC Surges 10%", "Weekly Update: Crypto meets AI", "Your Weekly Crypto Update"]
+2. NEVER INDUCE TRADING. Do not use language that encourages, suggests, or implies users should buy, sell, trade, or take any specific financial action. Avoid phrases like "buy the dip", "time to accumulate", "don't miss out", "act now", "profit from", "take advantage of". Use informational language: "may impact", "could influence", "worth monitoring", "explore", "learn more about", "stay informed". This content is for informational purposes only. Each story's product tie-in must be informational, not a call to action. Use patterns like "Learn more about [product area] with **[Product Name]**" or "Explore [topic] on **[Product Name]**" rather than "Trade now" or "Build your position".
 
-**PREHEADER** (hook within 37 characters)
-[Complements subject. Examples: "Your weekly crypto snapshot.", "Your snapshot of the biggest stories shaping the crypto landscape.", "This week: Bitcoin starts to climb"]
+3. SCAN AS WIDE A NET AS POSSIBLE. Research broadly across:
+   - Bitcoin and major altcoin price action (BTC, ETH, SOL, XRP, etc.) with specific % moves and drivers
+   - ETF flows (spot BTC, spot ETH, spot SOL) with specific $ figures
+   - Regulatory developments across ALL OKX markets (US, EEA, UK, Brazil, Singapore, UAE, Australia)
+   - Institutional moves (corporate treasury, banking, custody)
+   - DeFi/protocol news (launches, upgrades, TVL changes, token metrics)
+   - OKX-specific news (product launches, partnerships, listings)
+   - Macro events that impacted crypto (Fed, ECB, inflation data, employment, oil, geopolitics)
+   - Stablecoin developments (supply, regulation, new issuances)
+   - Security incidents, hacks, or exploits (report factually)
+   Do NOT limit yourself to crypto-native sources. Check Bloomberg, Reuters, FT, CoinDesk, The Block, Decrypt, DL News, and macro news sources.
 
-**TITLE** (2-6 words)
+═══════════════════════════════════════
+OUTPUT FORMAT
+═══════════════════════════════════════
+
+**STRUCTURED STORY DATA**
+
+For each of the top stories from the past 7 days, provide:
+
+📰 **[STORY HEADLINE]**
+- Category: [One of: Price Action | Regulation | Institutional | DeFi | OKX News | Macro | Stablecoin | Security | Infrastructure]
+- Impact: [HIGH | MEDIUM | LOW]
+- Sentiment: [Bullish | Bearish | Neutral]
+- Regions: [Comma-separated: Global, US, EEA, APAC, EMEA, Americas, Brazil, Singapore, UAE, Australia]
+- Summary: [2-3 sentences with specific numbers, percentages, dollar values]
+- Source: [URL]
+- Tags: [Comma-separated]
+
+Provide 6-8 stories covering a broad mix of categories. More is better than fewer — the email team will select the best 4 for the final email.
+
+Then provide the email-ready copy:
+
+**EMAIL COPY**
+
+**SUBJECT LINE** (≤33 characters)
+[Punchy, specific. Examples: "Weekly Update: BTC Surges 10%", "Weekly Update: Crypto meets AI"]
+
+**PREHEADER** (≤37 characters)
+[Complements subject. Examples: "Your weekly crypto snapshot.", "This week: Bitcoin starts to climb"]
+
+**TITLE**
 Weekly bulletin
 
-**INTRO** (1 sentence)
+**INTRO**
 Here are the biggest stories from the past week, shaping the crypto landscape:
 
-Then provide EXACTLY 4 story blocks. Each block follows this format:
+Then EXACTLY 4 story blocks for the email. Each follows this format:
 
-**[Bold headline sentence].** [2-4 sentences expanding on the story with specific numbers, percentages, dollar values. End with a natural tie-in to an OKX product using bold product name formatting.]
+**[Bold headline sentence].** [2-4 sentences expanding on the story with specific numbers. End with an informational tie-in to an OKX product — NOT a call to trade. Use language like "Learn more about..." or "Explore..." or "Stay informed with..."]
 
-The 4 stories should cover a MIX of:
-- Bitcoin/ETH price action and what drove it (ETF flows, liquidations, technical levels)
-- Regulatory/institutional developments (legislation, ETF approvals, central bank moves, major company actions)
-- DeFi/protocol-specific news (launches, upgrades, token metrics, ecosystem milestones)
-- OKX-specific news if available (product launches, partnerships, listings), OR another macro/industry story
+The 4 email stories should cover a MIX of:
+- Bitcoin/ETH price action and what drove it
+- Regulatory/institutional developments
+- DeFi/protocol-specific news or ecosystem milestones
+- OKX-specific news if available, OR another significant industry story
 
-Each story MUST end with a product tie-in. Use this pattern:
-"[Action verb] with **[Product Name]**." or "Explore [benefit] with **[Product Name]**."
+Each story MUST end with an informational product tie-in using bold formatting:
+"Explore [topic] with **[Product Name]**." or "Learn more on **[Product Name]**."
 
-OKX products to use (rotate across the 4 stories — each story gets a different one):
-- **Spot Trading** — for BTC/ETH price action stories, market entry
-- **Convert** — for zero-fee swaps, portfolio rebalancing, asset rotation
-- **Earn** / **Simple Earn** — for yield, staking, passive income
-- **OKX Wallet** — for DeFi, on-chain, dApp ecosystem stories
-- **Exchange** — for compliance, institutional, deep liquidity stories
-- **Order Types** — for volatility management, risk stories
-- **Recurring Buy** — for DCA strategies during uncertainty
-
-After the 4 stories:
+OKX products (rotate — each story gets a different one):
+- **Spot Trading** — market access, price discovery
+- **Convert** — zero-fee swaps, portfolio management
+- **Earn** / **Simple Earn** — yield, staking, passive strategies
+- **OKX Wallet** — DeFi, on-chain, dApp ecosystem access
+- **Exchange** — deep liquidity, compliance, institutional access
+- **Order Types** — market tools, risk management
+- **Recurring Buy** — structured, disciplined market participation
 
 **CTA** (1-3 words)
-[e.g. "Discover trading tools", "Explore OKX", "See Crypto Prices"]
+[e.g. "Explore OKX", "See Crypto Prices"]
 
 **CTA LINK**
 https://www.okx.com/ul/0isE9i
 
-CONTENT GUIDELINES:
-- Search for the PAST 7 DAYS' biggest crypto and macro stories
-- Prioritize stories that moved markets or have lasting implications
-- Use specific numbers: "$700M in spot ETF inflows", "surged 10% to $73,900", "$18 billion run rate"
-- Bold the opening phrase/headline of each story block
-- Keep each story block to 3-5 sentences total (including the product tie-in)
-- Stories should feel independent — each is a self-contained news item, not a thread
-- Do NOT include image specs, OKP template metadata, legal approvals, or QA checklists — just the email copy
-- Do NOT include any section for "Full card", entity approvals, or mock up references`;
+═══════════════════════════════════════
+RESEARCH INSTRUCTIONS
+═══════════════════════════════════════
+
+Search for the PAST 7 DAYS' biggest crypto and macro stories. Cast a wide net:
+1. Bitcoin and top-10 altcoin price movements with specific % and $ figures
+2. ETF flow data (spot BTC, ETH, SOL) with daily/weekly totals
+3. Regulatory actions across US, EU, UK, Brazil, Singapore, UAE, Australia
+4. Institutional adoption (corporate, banking, custody, ETF)
+5. DeFi protocol news (launches, hacks, TVL, governance)
+6. OKX announcements (check okx.com/learn and press releases)
+7. Macro events that moved crypto markets
+8. Stablecoin supply and regulatory developments
+Prioritise stories that moved markets or have lasting implications.`;
 
     const claudeResponse = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
@@ -96,7 +137,7 @@ CONTENT GUIDELINES:
       },
       body: JSON.stringify({
         model: "claude-sonnet-4-20250514",
-        max_tokens: 2500,
+        max_tokens: 4000,
         tools: [
           {
             type: "web_search_20250305",
@@ -107,7 +148,7 @@ CONTENT GUIDELINES:
         messages: [
           {
             role: "user",
-            content: `Generate the Weekly Crypto Update email content for the week ending ${isoDate}. Search for the past 7 days' biggest crypto headlines: Bitcoin and major altcoin price movements, institutional/regulatory news, notable DeFi developments, and any OKX-specific announcements. Include specific figures and data points.`,
+            content: `Generate the Weekly Crypto Update for the week ending ${isoDate}. Search broadly for the past 7 days: BTC/ETH/SOL price action, ETF flows, regulation across all OKX markets, institutional news, DeFi developments, OKX announcements, macro events, stablecoin news. Include specific figures. Remember: never name competitors, never induce trading, cast the widest possible research net.`,
           },
         ],
       }),
@@ -133,6 +174,14 @@ CONTENT GUIDELINES:
     // ----------------------------------------------------------
     // STEP 2: Post to Lark group
     // ----------------------------------------------------------
+    const MAX_CARD_LENGTH = 28000;
+    let cardContent = weeklyContent;
+    let truncated = false;
+    if (cardContent.length > MAX_CARD_LENGTH) {
+      cardContent = cardContent.substring(0, MAX_CARD_LENGTH) + "\n\n⚠️ *Content truncated due to length. Full output available in function logs.*";
+      truncated = true;
+    }
+
     const larkPayload = {
       msg_type: "interactive",
       card: {
@@ -146,7 +195,7 @@ CONTENT GUIDELINES:
         elements: [
           {
             tag: "markdown",
-            content: weeklyContent,
+            content: cardContent,
           },
           {
             tag: "hr",
@@ -157,7 +206,7 @@ CONTENT GUIDELINES:
               {
                 tag: "plain_text",
                 content:
-                  "Auto-generated by Editorial Agent | Copy into OKP template for build",
+                  "Auto-generated by Editorial Agent | For informational purposes only — not financial advice",
               },
             ],
           },
@@ -176,10 +225,10 @@ CONTENT GUIDELINES:
       throw new Error(`Lark webhook ${larkRes.status}: ${larkErr}`);
     }
 
-    console.log("Weekly Crypto Update posted to Lark");
+    console.log("Weekly Crypto Update posted to Lark" + (truncated ? " (truncated)" : ""));
 
     return new Response(
-      JSON.stringify({ success: true, date: publishStr }),
+      JSON.stringify({ success: true, date: publishStr, truncated }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
   } catch (error) {
