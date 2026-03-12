@@ -1,0 +1,9 @@
+{
+  "name": "okx-email-digests",
+  "version": "1.0.0",
+  "description": "Scheduled functions for OKX email content generation",
+  "type": "module",
+  "dependencies": {
+    "@netlify/functions": "^2.8.0"
+  }
+}
